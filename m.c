@@ -8,13 +8,13 @@
 #include <stdio.h>
 #include <dlfcn.h>
 
-extern void foo();
+extern void func_foo();
 
-typedef void (*bar_t)();
+typedef void (*func_bar_t)();
 
 int main() {
-  printf("called in main\n");
-  foo();
+  printf("-- called in main:\n");
+  func_foo();
 
   void *handle = dlopen("./libbar.so", RTLD_LAZY);
   if (!handle) {
@@ -23,14 +23,14 @@ int main() {
     return -1;
   }
 
-  bar_t bar = (bar_t)dlsym(handle, "bar");
-  if (!bar) {
+  func_bar_t func_bar = (func_bar_t)dlsym(handle, "func_bar");
+  if (!func_bar) {
     char* err = dlerror();
     printf("dlsym error: %s\n", err);
     return -1;
   }
 
-  bar();
+  func_bar();
 
   dlclose(handle);
 

@@ -9,7 +9,8 @@
 
 int var_foo = 0;
 
-void foo() {
+void func_foo() {
+  printf("func_foo@%p\n", func_foo);
   if (var_foo == 0) {
     var_foo = 3;
     printf("init var_foo@%p\n", &var_foo);

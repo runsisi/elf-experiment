@@ -7,9 +7,9 @@
 
 #include <stdio.h>
 
-extern void foo();
+extern void func_foo();
 
-void bar() {
-  printf("called in bar\n");
-  foo();
+void func_bar() {
+  printf("-- called in func_bar:\n");
+  func_foo();
 }
