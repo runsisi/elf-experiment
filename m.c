@@ -6,16 +6,21 @@
  */
 
 #include <stdio.h>
-#include <dlfcn.h>
 
 extern void func_foo();
 
+#ifdef DYN_LOAD
+#include <dlfcn.h>
 typedef void (*func_bar_t)();
+#else
+extern void func_bar();
+#endif
 
 int main() {
   printf("-- called in main:\n");
   func_foo();
 
+#ifdef DYN_LOAD
   void *handle = dlopen("./libbar.so", RTLD_LAZY);
   if (!handle) {
     char* err = dlerror();
@@ -33,6 +38,9 @@ int main() {
   func_bar();
 
   dlclose(handle);
+#else
+  func_bar();
+#endif
 
   return 0;
 }

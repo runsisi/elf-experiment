@@ -1,10 +1,200 @@
-## 1. build & run 1st
+## dynamic link
+
+### 1. build & run 1st
+
+bar: dynamic link foo
+
+m: static link foo, dynamic link bar
+
+#### 1.1 build
+
+```bash
+gcc -c -fPIC foo.c
+gcc -c -fPIC bar.c
+gcc -o libfoo.so -shared foo.o
+gcc -o libbar.so -shared bar.o -Wl,-rpath,. -L. -lfoo
+gcc -c foo.c
+ar rcs libfoo.a foo.o
+gcc -o m m.c libfoo.a -Wl,-rpath-link,. -L. -lbar
+```
+
+#### 1.2 run
+
+```bash
+$ LD_LIBRARY_PATH=. ./m
+-- called in main:
+func_foo@0x55b685477815
+init var_foo@0x55b685678014
+-- called in func_bar:
+func_foo@0x55b685477815
+
+$ ldd m
+    linux-vdso.so.1 (0x00007fffc2ffd000)
+    libbar.so => not found
+    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f7e2aeab000)
+    /lib64/ld-linux-x86-64.so.2 (0x00007f7e2b49e000)
+
+$ readelf --dyn-syms m | grep foo
+    13: 0000000000201014     4 OBJECT  GLOBAL DEFAULT   24 var_foo
+    15: 0000000000000815    75 FUNC    GLOBAL DEFAULT   14 func_foo
+
+$ LD_DEBUG=bindings  LD_LIBRARY_PATH=. ./m 2>&1 | grep -E '(func|var)_foo'
+      6968: binding file ./libfoo.so [0] to ./m [0]: normal symbol `var_foo'
+      6968: binding file ./libfoo.so [0] to ./m [0]: normal symbol `func_foo'
+      6968: binding file ./libbar.so [0] to ./m [0]: normal symbol `func_foo'
+func_foo@0x5580112c4815
+init var_foo@0x5580114c5014
+func_foo@0x5580112c4815
+```
+
+### 2. build & run 2nd
+
+bar: dynamic link foo
+
+m: dynamic link foo, dynamic link bar
+
+#### 2.1 build
+
+```bash
+gcc -c -fPIC foo.c
+gcc -c -fPIC bar.c
+gcc -o libfoo.so -shared foo.o
+gcc -o libbar.so -shared bar.o -Wl,-rpath,. -L. -lfoo
+gcc -o m m.c -Wl,-rpath,. -L. -lbar -lfoo
+```
+
+#### 2.2 run
+
+```bash
+$ ./m
+-- called in main:
+func_foo@0x7f87d7e8866a
+init var_foo@0x7f87d808902c
+-- called in func_bar:
+func_foo@0x7f87d7e8866a
+
+$ ldd m
+    linux-vdso.so.1 (0x00007ffd1a2ff000)
+    libbar.so => ./libbar.so (0x00007f4c9c820000)
+    libfoo.so => ./libfoo.so (0x00007f4c9c61e000)
+    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f4c9c22d000)
+    /lib64/ld-linux-x86-64.so.2 (0x00007f4c9cc24000)
+
+$ readelf --dyn-syms m | grep foo
+     4: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND func_foo
+
+$ LD_DEBUG=bindings ./m 2>&1 | grep -E '(func|var)_foo'
+      7197: binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `var_foo'
+      7197: binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
+      7197: binding file ./m [0] to ./libfoo.so [0]: normal symbol `func_foo'
+      7197: binding file ./libbar.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
+func_foo@0x7f99bc3a766a
+init var_foo@0x7f99bc5a802c
+func_foo@0x7f99bc3a766a
+```
+
+### 3. build & run 3rd
+
+foo: build with `-Bsymbolic`
+
+bar: dynamic link foo
+
+m: static link foo, dynamic link bar
+
+#### 3.1 build
+
+```bash
+gcc -c -fPIC foo.c
+gcc -c -fPIC bar.c
+gcc -o libfoo.so -shared foo.o -Wl,-Bsymbolic
+gcc -o libbar.so -shared bar.o -Wl,-rpath,. -L. -lfoo
+gcc -c foo.c
+ar rcs libfoo.a foo.o
+gcc -o m m.c libfoo.a -Wl,-rpath-link,. -L. -lbar
+```
+
+#### 3.2 run
+
+```bash
+$ LD_LIBRARY_PATH=. ./m
+-- called in main:
+func_foo@0x562d80b5c815
+init var_foo@0x562d80d5d014
+-- called in func_bar:
+func_foo@0x562d80b5c815
+
+$ ldd m
+    linux-vdso.so.1 (0x00007fffd4546000)
+    libbar.so => not found
+    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f8155812000)
+    /lib64/ld-linux-x86-64.so.2 (0x00007f8155e05000)
+
+$ readelf --dyn-syms m | grep foo
+    13: 0000000000201014     4 OBJECT  GLOBAL DEFAULT   24 var_foo
+    15: 0000000000000815    75 FUNC    GLOBAL DEFAULT   14 func_foo
+
+$ LD_DEBUG=bindings LD_LIBRARY_PATH=. ./m 2>&1 | grep -E '(func|var)_foo'
+      7239: binding file ./libbar.so [0] to ./m [0]: normal symbol `func_foo'
+func_foo@0x557c884ed815
+init var_foo@0x557c886ee014
+func_foo@0x557c884ed815
+```
+
+### 4. build & run 4th
+
+foo: build with `-Bsymbolic`
+
+bar: dynamic link foo
+
+m: dynamic link foo, dynamic link bar
+
+#### 4.1 build
+
+```bash
+gcc -c -fPIC foo.c
+gcc -c -fPIC bar.c
+gcc -o libfoo.so -shared foo.o -Wl,-Bsymbolic
+gcc -o libbar.so -shared bar.o -Wl,-rpath=. -L. -lfoo
+gcc -o m m.c -Wl,-rpath=. -L. -lbar -lfoo
+```
+
+#### 4.2 run
+
+```bash
+$ ./m
+-- called in main:
+func_foo@0x7fc24c14d63a
+init var_foo@0x7fc24c34e02c
+-- called in func_bar:
+func_foo@0x7fc24c14d63a
+
+$ ldd m
+    linux-vdso.so.1 (0x00007ffe3fdc9000)
+    libbar.so => ./libbar.so (0x00007f4f95a08000)
+    libfoo.so => ./libfoo.so (0x00007f4f95806000)
+    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f4f95415000)
+    /lib64/ld-linux-x86-64.so.2 (0x00007f4f95e0c000)
+
+$ readelf --dyn-syms m | grep foo
+     4: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND func_foo
+
+$ LD_DEBUG=bindings ./m 2>&1 | grep -E '(func|var)_foo'
+      7273: binding file ./m [0] to ./libfoo.so [0]: normal symbol `func_foo'
+      7273: binding file ./libbar.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
+func_foo@0x7f513e4c463a
+init var_foo@0x7f513e6c502c
+func_foo@0x7f513e4c463a
+```
+
+## dynamic load
+
+### 1. build & run 1st
 
 bar: dynamic link foo
 
 m: static link foo, dynamic load bar
 
-### 1.1 build
+#### 1.1 build
 
 ```bash
 gcc -c -fPIC foo.c
@@ -13,91 +203,91 @@ gcc -o libfoo.so -shared foo.o
 gcc -o libbar.so -shared bar.o -Wl,-rpath,. -L. -lfoo
 gcc -c foo.c
 ar rcs libfoo.a foo.o
-gcc -o m m.c libfoo.a -ldl
+gcc -o m -DDYN_LOAD m.c libfoo.a -ldl
 ```
 
-### 1.2 run
+#### 1.2 run
 
 ```bash
 $ ./m
 -- called in main:
-func_foo@0x55ee6e02e8a0
-init var_foo@0x55ee6e22f014
+func_foo@0x561a812bb8a0
+init var_foo@0x561a814bc014
 -- called in func_bar:
-func_foo@0x7f6d92e2b66a
-init var_foo@0x7f6d9302c02c
+func_foo@0x7f8395a8966a
+init var_foo@0x7f8395c8a02c
 
 $ ldd m
-    linux-vdso.so.1 (0x00007ffc71cdc000)
-    libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007fbaee68a000)
-    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fbaee299000)
-    /lib64/ld-linux-x86-64.so.2 (0x00007fbaeea90000)
+    linux-vdso.so.1 (0x00007ffce7f9f000)
+    libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007f5409aa2000)
+    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f54096b1000)
+    /lib64/ld-linux-x86-64.so.2 (0x00007f5409ea8000)
 
 $ readelf --dyn-syms m | grep foo
 
 $ LD_DEBUG=bindings ./m 2>&1 | grep -E '(func|var)_foo'
-      5288: binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `var_foo'
-      5288: binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
-      5288: binding file ./libbar.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
-func_foo@0x56018a6398a0
-init var_foo@0x56018a83a014
-func_foo@0x7f39dbbee66a
-init var_foo@0x7f39dbdef02c
+      7315: binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `var_foo'
+      7315: binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
+      7315: binding file ./libbar.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
+func_foo@0x56021b4618a0
+init var_foo@0x56021b662014
+func_foo@0x7f275733766a
+init var_foo@0x7f275753802c
 ```
 
-## 2. build & run 2nd
+### 2. build & run 2nd
 
 bar: dynamic link foo
 
 m: dynamic link foo, dynamic load bar
 
-### 2.1 build
+#### 2.1 build
 
 ```bash
 gcc -c -fPIC foo.c
 gcc -c -fPIC bar.c
 gcc -o libfoo.so -shared foo.o
 gcc -o libbar.so -shared bar.o -Wl,-rpath,. -L. -lfoo
-gcc -o m m.c -Wl,-rpath,. -L. -lfoo -ldl
+gcc -o m -DDYN_LOAD m.c -Wl,-rpath,. -L. -lfoo -ldl
 ```
 
-## 2.2 run
+#### 2.2 run
 
 ```bash
 $ ./m
 -- called in main:
-func_foo@0x7f959be6a66a
-init var_foo@0x7f959c06b02c
+func_foo@0x7f8c4c38d66a
+init var_foo@0x7f8c4c58e02c
 -- called in func_bar:
-func_foo@0x7f959be6a66a
+func_foo@0x7f8c4c38d66a
 
 $ ldd m
-    linux-vdso.so.1 (0x00007ffed5c2c000)
-    libfoo.so => ./libfoo.so (0x00007fc6f3b98000)
-    libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007fc6f3994000)
-    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fc6f35a3000)
-    /lib64/ld-linux-x86-64.so.2 (0x00007fc6f3f9c000)
+    linux-vdso.so.1 (0x00007ffeb2184000)
+    libfoo.so => ./libfoo.so (0x00007f75576a1000)
+    libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007f755749d000)
+    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f75570ac000)
+    /lib64/ld-linux-x86-64.so.2 (0x00007f7557aa5000)
 
 $ readelf --dyn-syms m | grep foo
      3: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND func_foo
 
-s LD_DEBUG=bindings ./m 2>&1 | grep -E '(func|var)_foo'
-      5462: binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `var_foo'
-      5462: binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
-      5462: binding file ./m [0] to ./libfoo.so [0]: normal symbol `func_foo'
-      5462: binding file ./libbar.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
-func_foo@0x7f8e49bff66a
-init var_foo@0x7f8e49e0002c
-func_foo@0x7f8e49bff66a
+$ LD_DEBUG=bindings ./m 2>&1 | grep -E '(func|var)_foo'
+      7350: binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `var_foo'
+      7350: binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
+      7350: binding file ./m [0] to ./libfoo.so [0]: normal symbol `func_foo'
+      7350: binding file ./libbar.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
+func_foo@0x7fe0068df66a
+init var_foo@0x7fe006ae002c
+func_foo@0x7fe0068df66a
 ```
 
-## 3. build & run 3rd
+### 3. build & run 3rd
 
 bar: dynamic link foo
 
 m: static link foo, dynamic load bar, build with `--export-dynamic`
 
-### 3.1 build
+#### 3.1 build
 
 ```bash
 gcc -c -fPIC foo.c
@@ -106,10 +296,10 @@ gcc -o libfoo.so -shared foo.o
 gcc -o libbar.so -shared bar.o -Wl,-rpath,. -L. -lfoo
 gcc -c foo.c
 ar rcs libfoo.a foo.o
-gcc -o m m.c libfoo.a -Wl,--export-dynamic -ldl
+gcc -o m -DDYN_LOAD m.c libfoo.a -Wl,--export-dynamic -ldl
 ```
 
-## 3.2 run
+#### 3.2 run
 
 ```bash
 $ ./m
@@ -138,7 +328,7 @@ init var_foo@0x55aaf4760014
 func_foo@0x55aaf455fac0
 ```
 
-## 4. build & run 4th
+### 4. build & run 4th
 
 foo: build with `-Bsymbolic`
 
@@ -146,7 +336,7 @@ bar: dynamic link foo
 
 m: static link foo, dynamic load bar, build with `--export-dynamic`
 
-### 4.1 build
+#### 4.1 build
 
 ```bash
 gcc -c -fPIC foo.c
@@ -155,10 +345,10 @@ gcc -o libfoo.so -shared foo.o -Wl,-Bsymbolic
 gcc -o libbar.so -shared bar.o -Wl,-rpath,. -L. -lfoo
 gcc -c foo.c
 ar rcs libfoo.a foo.o
-gcc -o m m.c libfoo.a -Wl,--export-dynamic -ldl
+gcc -o m -DDYN_LOAD m.c libfoo.a -Wl,--export-dynamic -ldl
 ```
 
-### 4.2 run
+#### 4.2 run
 
 ```bash
 $ ./m
@@ -185,7 +375,7 @@ init var_foo@0x55fca42e4014
 func_foo@0x55fca40e3ac0
 ```
 
-## 5. build & run 4th
+### 5. build & run 5th
 
 foo: build with `-Bsymbolic`
 
@@ -193,7 +383,7 @@ bar: dynamic link foo
 
 m: static link foo, dynamic load bar
 
-### 5.1 build
+#### 5.1 build
 
 ```bash
 gcc -c -fPIC foo.c
@@ -202,10 +392,10 @@ gcc -o libfoo.so -shared foo.o -Wl,-Bsymbolic
 gcc -o libbar.so -shared bar.o -Wl,-rpath,. -L. -lfoo
 gcc -c foo.c
 ar rcs libfoo.a foo.o
-gcc -o m m.c libfoo.a -ldl
+gcc -o m -DDYN_LOAD m.c libfoo.a -ldl
 ```
 
-### 5.2 run
+#### 5.2 run
 
 ```bash
 $ ./m
