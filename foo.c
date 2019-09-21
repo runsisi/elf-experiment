@@ -10,9 +10,9 @@
 int var_foo = 0;
 
 void func_foo() {
-  printf("func_foo@%p\n", func_foo);
+  printf("- %s@%p:\n", __func__, func_foo);
   if (var_foo == 0) {
     var_foo = 3;
-    printf("init var_foo@%p\n", &var_foo);
+    printf("initialize var_foo@%p\n", &var_foo);
   }
 }

@@ -17,7 +17,7 @@ extern void func_bar();
 #endif
 
 int main() {
-  printf("-- called in main:\n");
+  printf("-- %s@%p:\n", __func__, main);
   func_foo();
 
 #ifdef DYN_LOAD
