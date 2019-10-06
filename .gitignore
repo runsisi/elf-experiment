@@ -5,3 +5,5 @@
 *.o
 *.so
 main
+libso.so.1
+libso.so.1.0.0
