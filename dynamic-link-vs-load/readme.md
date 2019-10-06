@@ -16,29 +16,26 @@ gcc -o main main.c libfoo.a -Wl,-rpath-link,. -L. -lbar
 
 ```bash
 $ LD_LIBRARY_PATH=. ./main
--- called in main:
-func_foo@0x55b685477815
-init var_foo@0x55b685678014
--- called in func_bar:
-func_foo@0x55b685477815
-
+-- main@0x5558da8267aa
+- func_foo@0x5558da8267e8
+initialize var_foo@0x5558daa27014
+- func_bar@0x7fb0580f467a
+- func_foo@0x5558da8267e8
 $ ldd main
-    linux-vdso.so.1 (0x00007fffc2ffd000)
-    libbar.so => not found
-    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f7e2aeab000)
-    /lib64/ld-linux-x86-64.so.2 (0x00007f7e2b49e000)
-
+        linux-vdso.so.1 (0x00007fff30f99000)
+        libbar.so => not found
+        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f7307fb7000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007f73085aa000)
 $ readelf --dyn-syms main | grep foo
-    13: 0000000000201014     4 OBJECT  GLOBAL DEFAULT   24 var_foo
-    15: 0000000000000815    75 FUNC    GLOBAL DEFAULT   14 func_foo
-
+    12: 0000000000201014     4 OBJECT  GLOBAL DEFAULT   24 var_foo
+    14: 00000000000007e8    82 FUNC    GLOBAL DEFAULT   14 func_foo
 $ LD_DEBUG=bindings  LD_LIBRARY_PATH=. ./main 2>&1 | grep -E '(func|var)_foo'
-      6968: binding file ./libfoo.so [0] to ./main [0]: normal symbol `var_foo'
-      6968: binding file ./libfoo.so [0] to ./main [0]: normal symbol `func_foo'
-      6968: binding file ./libbar.so [0] to ./main [0]: normal symbol `func_foo'
-func_foo@0x5580112c4815
-init var_foo@0x5580114c5014
-func_foo@0x5580112c4815
+    334915:     binding file ./libfoo.so [0] to ./main [0]: normal symbol `var_foo'
+    334915:     binding file ./libfoo.so [0] to ./main [0]: normal symbol `func_foo'
+    334915:     binding file ./libbar.so [0] to ./main [0]: normal symbol `func_foo'
+- func_foo@0x55fb7d0b87e8
+initialize var_foo@0x55fb7d2b9014
+- func_foo@0x55fb7d0b87e8
 ```
 
 ### 1.2 dynamic load
@@ -59,29 +56,26 @@ gcc -o main -DDYN_LOAD main.c libfoo.a -ldl
 
 ```bash
 $ ./main
--- called in main:
-func_foo@0x561a812bb8a0
-init var_foo@0x561a814bc014
--- called in func_bar:
-func_foo@0x7f8395a8966a
-init var_foo@0x7f8395c8a02c
-
+-- main@0x5652e4a5279a
+- func_foo@0x5652e4a52873
+initialize var_foo@0x5652e4c53014
+- func_bar@0x7f152096b67a
+- func_foo@0x7f152076966a
+initialize var_foo@0x7f152096a02c
 $ ldd main
-    linux-vdso.so.1 (0x00007ffce7f9f000)
-    libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007f5409aa2000)
-    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f54096b1000)
-    /lib64/ld-linux-x86-64.so.2 (0x00007f5409ea8000)
-
+        linux-vdso.so.1 (0x00007ffe581ce000)
+        libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007f9947fa5000)
+        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f9947bb4000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007f99483ab000)
 $ readelf --dyn-syms main | grep foo
-
 $ LD_DEBUG=bindings ./main 2>&1 | grep -E '(func|var)_foo'
-      7315: binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `var_foo'
-      7315: binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
-      7315: binding file ./libbar.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
-func_foo@0x56021b4618a0
-init var_foo@0x56021b662014
-func_foo@0x7f275733766a
-init var_foo@0x7f275753802c
+    336076:     binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `var_foo'
+    336076:     binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
+    336076:     binding file ./libbar.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
+- func_foo@0x558cb6e52873
+initialize var_foo@0x558cb7053014
+- func_foo@0x7f22094e166a
+initialize var_foo@0x7f22096e202c
 ```
 
 ### 2.1 dynamic link
@@ -100,30 +94,27 @@ gcc -o main main.c -Wl,-rpath,. -L. -lbar -lfoo
 
 ```bash
 $ ./main
--- called in main:
-func_foo@0x7f87d7e8866a
-init var_foo@0x7f87d808902c
--- called in func_bar:
-func_foo@0x7f87d7e8866a
-
+-- main@0x564fb0cef7aa
+- func_foo@0x7f39087e366a
+initialize var_foo@0x7f39089e402c
+- func_bar@0x7f39089e567a
+- func_foo@0x7f39087e366a
 $ ldd main
-    linux-vdso.so.1 (0x00007ffd1a2ff000)
-    libbar.so => ./libbar.so (0x00007f4c9c820000)
-    libfoo.so => ./libfoo.so (0x00007f4c9c61e000)
-    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f4c9c22d000)
-    /lib64/ld-linux-x86-64.so.2 (0x00007f4c9cc24000)
-
+        linux-vdso.so.1 (0x00007ffecb16d000)
+        libbar.so => ./libbar.so (0x00007f53524b0000)
+        libfoo.so => ./libfoo.so (0x00007f53522ae000)
+        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f5351ebd000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007f53528b4000)
 $ readelf --dyn-syms main | grep foo
-     4: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND func_foo
-
+     3: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND func_foo
 $ LD_DEBUG=bindings ./main 2>&1 | grep -E '(func|var)_foo'
-      7197: binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `var_foo'
-      7197: binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
-      7197: binding file ./main [0] to ./libfoo.so [0]: normal symbol `func_foo'
-      7197: binding file ./libbar.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
-func_foo@0x7f99bc3a766a
-init var_foo@0x7f99bc5a802c
-func_foo@0x7f99bc3a766a
+    336124:     binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `var_foo'
+    336124:     binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
+    336124:     binding file ./main [0] to ./libfoo.so [0]: normal symbol `func_foo'
+    336124:     binding file ./libbar.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
+- func_foo@0x7fa4af4cc66a
+initialize var_foo@0x7fa4af6cd02c
+- func_foo@0x7fa4af4cc66a
 ```
 
 ### 2.2 dynamic load
@@ -142,30 +133,27 @@ gcc -o main -DDYN_LOAD main.c -Wl,-rpath,. -L. -lfoo -ldl
 
 ```bash
 $ ./main
--- called in main:
-func_foo@0x7f8c4c38d66a
-init var_foo@0x7f8c4c58e02c
--- called in func_bar:
-func_foo@0x7f8c4c38d66a
-
+-- main@0x55b8928458aa
+- func_foo@0x7f969761866a
+initialize var_foo@0x7f969781902c
+- func_bar@0x7f9696e2167a
+- func_foo@0x7f969761866a
 $ ldd main
-    linux-vdso.so.1 (0x00007ffeb2184000)
-    libfoo.so => ./libfoo.so (0x00007f75576a1000)
-    libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007f755749d000)
-    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f75570ac000)
-    /lib64/ld-linux-x86-64.so.2 (0x00007f7557aa5000)
-
+        linux-vdso.so.1 (0x00007ffefe4d2000)
+        libfoo.so => ./libfoo.so (0x00007fea85e96000)
+        libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007fea85c92000)
+        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fea858a1000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007fea8629a000)
 $ readelf --dyn-syms main | grep foo
-     3: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND func_foo
-
+     2: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND func_foo
 $ LD_DEBUG=bindings ./main 2>&1 | grep -E '(func|var)_foo'
-      7350: binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `var_foo'
-      7350: binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
-      7350: binding file ./main [0] to ./libfoo.so [0]: normal symbol `func_foo'
-      7350: binding file ./libbar.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
-func_foo@0x7fe0068df66a
-init var_foo@0x7fe006ae002c
-func_foo@0x7fe0068df66a
+    336168:     binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `var_foo'
+    336168:     binding file ./libfoo.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
+    336168:     binding file ./main [0] to ./libfoo.so [0]: normal symbol `func_foo'
+    336168:     binding file ./libbar.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
+- func_foo@0x7fb916fde66a
+initialize var_foo@0x7fb9171df02c
+- func_foo@0x7fb916fde66a
 ```
 
 ### 3.1 dynamic link
@@ -188,27 +176,24 @@ gcc -o main main.c libfoo.a -Wl,-rpath-link,. -L. -lbar
 
 ```bash
 $ LD_LIBRARY_PATH=. ./main
--- called in main:
-func_foo@0x562d80b5c815
-init var_foo@0x562d80d5d014
--- called in func_bar:
-func_foo@0x562d80b5c815
-
+-- main@0x5560d85a57aa
+- func_foo@0x5560d85a57e8
+initialize var_foo@0x5560d87a6014
+- func_bar@0x7f078f97e67a
+- func_foo@0x5560d85a57e8
 $ ldd main
-    linux-vdso.so.1 (0x00007fffd4546000)
-    libbar.so => not found
-    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f8155812000)
-    /lib64/ld-linux-x86-64.so.2 (0x00007f8155e05000)
-
+        linux-vdso.so.1 (0x00007ffdea142000)
+        libbar.so => not found
+        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f4e2c53a000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007f4e2cb2d000)
 $ readelf --dyn-syms main | grep foo
-    13: 0000000000201014     4 OBJECT  GLOBAL DEFAULT   24 var_foo
-    15: 0000000000000815    75 FUNC    GLOBAL DEFAULT   14 func_foo
-
+    12: 0000000000201014     4 OBJECT  GLOBAL DEFAULT   24 var_foo
+    14: 00000000000007e8    82 FUNC    GLOBAL DEFAULT   14 func_foo
 $ LD_DEBUG=bindings LD_LIBRARY_PATH=. ./main 2>&1 | grep -E '(func|var)_foo'
-      7239: binding file ./libbar.so [0] to ./main [0]: normal symbol `func_foo'
-func_foo@0x557c884ed815
-init var_foo@0x557c886ee014
-func_foo@0x557c884ed815
+    336211:     binding file ./libbar.so [0] to ./main [0]: normal symbol `func_foo'
+- func_foo@0x56513f3e67e8
+initialize var_foo@0x56513f5e7014
+- func_foo@0x56513f3e67e8
 ```
 
 ### 3.2 dynamic load
@@ -231,27 +216,24 @@ gcc -o main -DDYN_LOAD main.c libfoo.a -ldl
 
 ```bash
 $ ./main
--- called in main:
-func_foo@0x563b49c0a8a0
-init var_foo@0x563b49e0b014
--- called in func_bar:
-func_foo@0x7fa1a725563a
-init var_foo@0x7fa1a745602c
-
+-- main@0x559f98a3779a
+- func_foo@0x559f98a37873
+initialize var_foo@0x559f98c38014
+- func_bar@0x7faf7c34567a
+- func_foo@0x7faf7c14363a
+initialize var_foo@0x7faf7c34402c
 $ ldd main
-    linux-vdso.so.1 (0x00007fff2119c000)
-    libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007f0520cd1000)
-    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f05208e0000)
-    /lib64/ld-linux-x86-64.so.2 (0x00007f05210d7000)
-
+        linux-vdso.so.1 (0x00007ffc414d9000)
+        libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007f492f382000)
+        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f492ef91000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007f492f788000)
 $ readelf --dyn-syms main | grep foo
-
 $ LD_DEBUG=bindings ./main 2>&1 | grep -E '(func|var)_foo'
-      5772: binding file ./libbar.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
-func_foo@0x55cfc24508a0
-init var_foo@0x55cfc2651014
-func_foo@0x7fa8389ee63a
-init var_foo@0x7fa838bef02c
+    336255:     binding file ./libbar.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
+- func_foo@0x559810185873
+initialize var_foo@0x559810386014
+- func_foo@0x7fb06467d63a
+initialize var_foo@0x7fb06487e02c
 ```
 
 ### 4.1 dynamic link
@@ -272,28 +254,25 @@ gcc -o main main.c -Wl,-rpath=. -L. -lbar -lfoo
 
 ```bash
 $ ./main
--- called in main:
-func_foo@0x7fc24c14d63a
-init var_foo@0x7fc24c34e02c
--- called in func_bar:
-func_foo@0x7fc24c14d63a
-
+-- main@0x561e6b95a7aa
+- func_foo@0x7f702464763a
+initialize var_foo@0x7f702484802c
+- func_bar@0x7f702484967a
+- func_foo@0x7f702464763a
 $ ldd main
-    linux-vdso.so.1 (0x00007ffe3fdc9000)
-    libbar.so => ./libbar.so (0x00007f4f95a08000)
-    libfoo.so => ./libfoo.so (0x00007f4f95806000)
-    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f4f95415000)
-    /lib64/ld-linux-x86-64.so.2 (0x00007f4f95e0c000)
-
+        linux-vdso.so.1 (0x00007ffcddd0b000)
+        libbar.so => ./libbar.so (0x00007f97a9a55000)
+        libfoo.so => ./libfoo.so (0x00007f97a9853000)
+        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f97a9462000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007f97a9e59000)
 $ readelf --dyn-syms main | grep foo
-     4: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND func_foo
-
+     3: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND func_foo
 $ LD_DEBUG=bindings ./main 2>&1 | grep -E '(func|var)_foo'
-      7273: binding file ./main [0] to ./libfoo.so [0]: normal symbol `func_foo'
-      7273: binding file ./libbar.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
-func_foo@0x7f513e4c463a
-init var_foo@0x7f513e6c502c
-func_foo@0x7f513e4c463a
+    336294:     binding file ./main [0] to ./libfoo.so [0]: normal symbol `func_foo'
+    336294:     binding file ./libbar.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
+- func_foo@0x7f162e65b63a
+initialize var_foo@0x7f162e85c02c
+- func_foo@0x7f162e65b63a
 ```
 
 ### 4.2 dynamic load
@@ -314,28 +293,25 @@ gcc -o main -DDYN_LOAD main.c -Wl,-rpath=. -L. -lfoo -ldl
 
 ```bash
 $ ./main
--- called in main:
-func_foo@0x7fc24c14d63a
-init var_foo@0x7fc24c34e02c
--- called in func_bar:
-func_foo@0x7fc24c14d63a
-
+-- main@0x5600c70068aa
+- func_foo@0x7f9c82e3863a
+initialize var_foo@0x7f9c8303902c
+- func_bar@0x7f9c8264167a
+- func_foo@0x7f9c82e3863a
 $ ldd main
-    linux-vdso.so.1 (0x00007ffe3fdc9000)
-    libbar.so => ./libbar.so (0x00007f4f95a08000)
-    libfoo.so => ./libfoo.so (0x00007f4f95806000)
-    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f4f95415000)
-    /lib64/ld-linux-x86-64.so.2 (0x00007f4f95e0c000)
-
+        linux-vdso.so.1 (0x00007fff0c5a7000)
+        libfoo.so => ./libfoo.so (0x00007f9f1e394000)
+        libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007f9f1e190000)
+        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f9f1dd9f000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007f9f1e798000)
 $ readelf --dyn-syms main | grep foo
-     4: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND func_foo
-
+     2: 0000000000000000     0 FUNC    GLOBAL DEFAULT  UND func_foo
 $ LD_DEBUG=bindings ./main 2>&1 | grep -E '(func|var)_foo'
-      7273: binding file ./main [0] to ./libfoo.so [0]: normal symbol `func_foo'
-      7273: binding file ./libbar.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
-func_foo@0x7f513e4c463a
-init var_foo@0x7f513e6c502c
-func_foo@0x7f513e4c463a
+    336333:     binding file ./main [0] to ./libfoo.so [0]: normal symbol `func_foo'
+    336333:     binding file ./libbar.so [0] to ./libfoo.so [0]: normal symbol `func_foo'
+- func_foo@0x7fe21dae763a
+initialize var_foo@0x7fe21dce802c
+- func_foo@0x7fe21dae763a
 ```
 
 ### 5.1 dynamic link
@@ -356,29 +332,27 @@ gcc -o main main.c libfoo.a -Wl,-rpath,. -L. -lbar -Wl,--export-dynamic
 
 ```bash
 $ ./main
--- called in main:
-func_foo@0x564203541ac0
-init var_foo@0x564203742014
--- called in func_bar:
-func_foo@0x564203541ac0
-
+-- main@0x55851c1af8ba
+- func_foo@0x55851c1af8f8
+initialize var_foo@0x55851c3b0014
+- func_bar@0x7fe548b4d67a
+- func_foo@0x55851c1af8f8
 $ ldd main
-    linux-vdso.so.1 (0x00007fffc93cd000)
-    libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007f2b63608000)
-    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f2b63217000)
-    /lib64/ld-linux-x86-64.so.2 (0x00007f2b63a0e000)
-
+        linux-vdso.so.1 (0x00007ffd2c9cb000)
+        libbar.so => ./libbar.so (0x00007fec2d563000)
+        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fec2d172000)
+        libfoo.so => ./libfoo.so (0x00007fec2cf70000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007fec2d967000)
 $ readelf --dyn-syms main | grep foo
-    23: 0000000000201014     4 OBJECT  GLOBAL DEFAULT   24 var_foo
-    25: 0000000000000ac0    75 FUNC    GLOBAL DEFAULT   14 func_foo
-
+    19: 0000000000201014     4 OBJECT  GLOBAL DEFAULT   24 var_foo
+    21: 00000000000008f8    82 FUNC    GLOBAL DEFAULT   14 func_foo
 $ LD_DEBUG=bindings ./main 2>&1 | grep -E '(func|var)_foo'
-      5594: binding file ./libfoo.so [0] to ./main [0]: normal symbol `var_foo'
-      5594: binding file ./libfoo.so [0] to ./main [0]: normal symbol `func_foo'
-      5594: binding file ./libbar.so [0] to ./main [0]: normal symbol `func_foo'
-func_foo@0x55aaf455fac0
-init var_foo@0x55aaf4760014
-func_foo@0x55aaf455fac0
+    336401:     binding file ./libfoo.so [0] to ./main [0]: normal symbol `var_foo'
+    336401:     binding file ./libfoo.so [0] to ./main [0]: normal symbol `func_foo'
+    336401:     binding file ./libbar.so [0] to ./main [0]: normal symbol `func_foo'
+- func_foo@0x55b21679e8f8
+initialize var_foo@0x55b21699f014
+- func_foo@0x55b21679e8f8
 ```
 
 ### 5.2 dynamic load
@@ -399,29 +373,26 @@ gcc -o main -DDYN_LOAD main.c libfoo.a -Wl,--export-dynamic -ldl
 
 ```bash
 $ ./main
--- called in main:
-func_foo@0x564203541ac0
-init var_foo@0x564203742014
--- called in func_bar:
-func_foo@0x564203541ac0
-
+-- main@0x55645f3be9aa
+- func_foo@0x55645f3bea83
+initialize var_foo@0x55645f5bf014
+- func_bar@0x7f5e972ef67a
+- func_foo@0x55645f3bea83
 $ ldd main
-    linux-vdso.so.1 (0x00007fffc93cd000)
-    libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007f2b63608000)
-    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f2b63217000)
-    /lib64/ld-linux-x86-64.so.2 (0x00007f2b63a0e000)
-
+        linux-vdso.so.1 (0x00007ffc10394000)
+        libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007f8a35468000)
+        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f8a35077000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007f8a3586e000)
 $ readelf --dyn-syms main | grep foo
-    23: 0000000000201014     4 OBJECT  GLOBAL DEFAULT   24 var_foo
-    25: 0000000000000ac0    75 FUNC    GLOBAL DEFAULT   14 func_foo
-
+    22: 0000000000201014     4 OBJECT  GLOBAL DEFAULT   24 var_foo
+    24: 0000000000000a83    82 FUNC    GLOBAL DEFAULT   14 func_foo
 $ LD_DEBUG=bindings ./main 2>&1 | grep -E '(func|var)_foo'
-      5594: binding file ./libfoo.so [0] to ./main [0]: normal symbol `var_foo'
-      5594: binding file ./libfoo.so [0] to ./main [0]: normal symbol `func_foo'
-      5594: binding file ./libbar.so [0] to ./main [0]: normal symbol `func_foo'
-func_foo@0x55aaf455fac0
-init var_foo@0x55aaf4760014
-func_foo@0x55aaf455fac0
+    336532:     binding file ./libfoo.so [0] to ./main [0]: normal symbol `var_foo'
+    336532:     binding file ./libfoo.so [0] to ./main [0]: normal symbol `func_foo'
+    336532:     binding file ./libbar.so [0] to ./main [0]: normal symbol `func_foo'
+- func_foo@0x56098d6b9a83
+initialize var_foo@0x56098d8ba014
+- func_foo@0x56098d6b9a83
 ```
 
 ### 6.1 dynamic link
@@ -444,27 +415,25 @@ gcc -o main main.c libfoo.a -Wl,-rpath,. -L. -lbar -Wl,--export-dynamic
 
 ```bash
 $ ./main
--- called in main:
-func_foo@0x5565dd314ac0
-init var_foo@0x5565dd515014
--- called in func_bar:
-func_foo@0x5565dd314ac0
-
+-- main@0x56480d7868ba
+- func_foo@0x56480d7868f8
+initialize var_foo@0x56480d987014
+- func_bar@0x7f7668ed067a
+- func_foo@0x56480d7868f8
 $ ldd main
-    linux-vdso.so.1 (0x00007ffd5959f000)
-    libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007fe48712a000)
-    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fe486d39000)
-    /lib64/ld-linux-x86-64.so.2 (0x00007fe487530000)
-
+        linux-vdso.so.1 (0x00007ffe4bdf5000)
+        libbar.so => ./libbar.so (0x00007f718e741000)
+        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007f718e350000)
+        libfoo.so => ./libfoo.so (0x00007f718e14e000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007f718eb45000)
 $ readelf --dyn-syms main | grep foo
-    23: 0000000000201014     4 OBJECT  GLOBAL DEFAULT   24 var_foo
-    25: 0000000000000ac0    75 FUNC    GLOBAL DEFAULT   14 func_foo
-
+    19: 0000000000201014     4 OBJECT  GLOBAL DEFAULT   24 var_foo
+    21: 00000000000008f8    82 FUNC    GLOBAL DEFAULT   14 func_foo
 $ LD_DEBUG=bindings ./main 2>&1 | grep -E '(func|var)_foo'
-      5719: binding file ./libbar.so [0] to ./main [0]: normal symbol `func_foo'
-func_foo@0x55fca40e3ac0
-init var_foo@0x55fca42e4014
-func_foo@0x55fca40e3ac0
+    336579:     binding file ./libbar.so [0] to ./main [0]: normal symbol `func_foo'
+- func_foo@0x5585706348f8
+initialize var_foo@0x558570835014
+- func_foo@0x5585706348f8
 ```
 
 ### 6.2 dynamic load
@@ -487,27 +456,24 @@ gcc -o main -DDYN_LOAD main.c libfoo.a -Wl,--export-dynamic -ldl
 
 ```bash
 $ ./main
--- called in main:
-func_foo@0x5565dd314ac0
-init var_foo@0x5565dd515014
--- called in func_bar:
-func_foo@0x5565dd314ac0
-
+-- main@0x5652548209aa
+- func_foo@0x565254820a83
+initialize var_foo@0x565254a21014
+- func_bar@0x7f6cebd3f67a
+- func_foo@0x565254820a83
 $ ldd main
-    linux-vdso.so.1 (0x00007ffd5959f000)
-    libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007fe48712a000)
-    libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fe486d39000)
-    /lib64/ld-linux-x86-64.so.2 (0x00007fe487530000)
-
+        linux-vdso.so.1 (0x00007fe18065f000)
+        libdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007fe180034000)
+        libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fe17fc43000)
+        /lib64/ld-linux-x86-64.so.2 (0x00007fe18043a000)
 $ readelf --dyn-syms main | grep foo
-    23: 0000000000201014     4 OBJECT  GLOBAL DEFAULT   24 var_foo
-    25: 0000000000000ac0    75 FUNC    GLOBAL DEFAULT   14 func_foo
-
+    22: 0000000000201014     4 OBJECT  GLOBAL DEFAULT   24 var_foo
+    24: 0000000000000a83    82 FUNC    GLOBAL DEFAULT   14 func_foo
 $ LD_DEBUG=bindings ./main 2>&1 | grep -E '(func|var)_foo'
-      5719: binding file ./libbar.so [0] to ./main [0]: normal symbol `func_foo'
-func_foo@0x55fca40e3ac0
-init var_foo@0x55fca42e4014
-func_foo@0x55fca40e3ac0
+    336620:     binding file ./libbar.so [0] to ./main [0]: normal symbol `func_foo'
+- func_foo@0x563545d14a83
+initialize var_foo@0x563545f15014
+- func_foo@0x563545d14a83
 ```
 
 ## references

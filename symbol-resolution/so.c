@@ -10,7 +10,7 @@ EXPORT void common_func() {
 
 EXPORT
 int so_hello() {
-    printf("- %s@%p:\n", __func__, so_hello);
+    printf("- %s@%p\n", __func__, so_hello);
     common_func();
     printf("g_so_long@%p = %ld\n", &g_so_long, g_so_long);
     return 's';

@@ -10,6 +10,6 @@
 extern void func_foo();
 
 void func_bar() {
-  printf("- %s@%p:\n", __func__, func_bar);
+  printf("- %s@%p\n", __func__, func_bar);
   func_foo();
 }

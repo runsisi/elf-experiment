@@ -17,7 +17,7 @@ extern void func_bar();
 #endif
 
 int main() {
-  printf("-- %s@%p:\n", __func__, main);
+  printf("-- %s@%p\n", __func__, main);
   func_foo();
 
 #ifdef DYN_LOAD
